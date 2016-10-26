@@ -33,6 +33,8 @@ int main(int argc, char *argv[])
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	char s[INET6_ADDRSTRLEN];
+	struct join_request jr_packet;
+	struct request_response response_packet;
 
 	if (argc != 3) {
     fprintf(stderr,"usage: slave MasterHostname MasterPort#\n");
@@ -76,15 +78,30 @@ int main(int argc, char *argv[])
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	char *test_buf = MESSAGE;
-	if ((numbytes = send(sockfd, test_buf, strlen(MESSAGE), 0)) == -1) {
+	// char *test_buf = MESSAGE;
+	// if ((numbytes = send(sockfd, test_buf, strlen(MESSAGE), 0)) == -1) {
+	// 	perror("send");
+	// 	exit(1);
+	// }
+
+	//First, we send a join request
+	jr_packet.gid = GID;
+	jr_packet.magic_num = htons(MAGIC_NUMBER);
+	if (send(sockfd, (void *)(&jr_packet), sizeof jr_packet, 0) == -1) {
 		perror("send");
 		exit(1);
 	}
 
-	//First, we send a join request
-
 	//Then, we wait for a response and set up our junk
+
+	if ((numbytes = recv(sockfd, (void *)(&response_packet), sizeof response_packet, 0)) == -1) {
+	    perror("recv");
+	    exit(1);
+	}
+
+	printf("we have reached this line. %d\n", numbytes);
+
+	
 
 	// if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
 	//     perror("recv");
