@@ -54,8 +54,8 @@ int main(int argc, char *argv[])
 	int rv;
   struct join_request jr_packet;
   struct request_response response_packet;
-	RID_t rid = 1;
-	next_IP_t next_IP = 0x12345678;
+	uint8_t rid = 1;
+	uint32_t next_IP = 0x12345678;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
