@@ -99,9 +99,12 @@ int main(int argc, char *argv[])
 	    exit(1);
 	}
 
-	printf("we have reached this line. %d\n", numbytes);
+	printf("Received Response Packet\n");
+	printf("GID: %d\n", response_packet.gid);
+	printf("Magic Number: %#06x\n", ntohs(response_packet.magic_num));
+	printf("RID: %d\n", response_packet.rid);
+	printf("Next Node IP: %#10x\n", ntohl(response_packet.next_IP));
 
-	
 
 	// if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
 	//     perror("recv");
