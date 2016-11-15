@@ -97,10 +97,21 @@ int main(int argc, char *argv[])
 	    exit(1);
 	}
 
+	//TODO do we need to check the size of the incoming packet, and error out if it is wrong?
+	if (numbytes != (sizeof response_packet)) {
+		printf("Error: Server response was incorrect size.");
+		exit(1);
+	}
+
 	gid = response_packet.gid;
 	magic_num = ntohs(response_packet.magic_num);
 	this_rid = response_packet.rid;
 	next_IP = ntohl(response_packet.next_IP);
+
+	if (magic_num != MAGIC_NUMBER) {
+		printf("Error: Server response contained wrong \"magic number\" value.");
+		exit(1);
+	}
 
 	printf("Received Response Packet\n");
 	printf("GID: %d\n", gid);
