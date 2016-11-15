@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
 	uint8_t this_rid;
 	uint32_t next_IP;
 
+	struct thread_args thr_args;
 	pthread_t forwarding_thread_id;
 	pthread_t sending_thread_id;
 
@@ -105,7 +106,6 @@ int main(int argc, char *argv[])
 	    exit(1);
 	}
 
-	//TODO do we need to check the size of the incoming packet, and error out if it is wrong?
 	if (numbytes != (sizeof response_packet)) {
 		printf("Error: Server response was incorrect size.");
 		exit(1);
@@ -132,8 +132,13 @@ int main(int argc, char *argv[])
 
 	close(sockfd);
 
-	pthread_create(&forwarding_thread_id, NULL, forwarding_loop, NULL);
-	pthread_create(&sending_thread_id, NULL, sending_loop, NULL);
+	//TODO construct thread argument structs
+	thr_args.next_IP = next_IP;
+	thr_args.this_rid = this_rid;
+	thr_args.gid = gid;
+
+	pthread_create(&forwarding_thread_id, NULL, forwarding_loop, &thr_args);
+	pthread_create(&sending_thread_id, NULL, sending_loop, &thr_args);
 
 	pthread_join(forwarding_thread_id, NULL);
 	pthread_join(sending_thread_id, NULL);
@@ -143,11 +148,37 @@ int main(int argc, char *argv[])
 
 void *forwarding_loop(void *arg) {
 	struct thread_args *args = (struct thread_args *)arg;
+	struct addrinfo hints, *res;
+	int sockfd;
+	char port_number[10];
+	struct ring_message message_packet;
+	int byteCount;
 
-	while (0) {
+	//TODO remove this
+	char buf[100];
+
+	//we will need a decimal string expressing the port number
+	sprintf(port_number,"%d", BASE_PORT + 5*args->gid + (args->this_rid));
+	printf("%s\n", port_number);
+
+	//set up a socket
+	hints.ai_family = AF_INET;  // use IPv4 or IPv6, whichever
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE;
+	getaddrinfo(NULL, port_number, &hints, &res);
+	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	bind(sockfd, res->ai_addr, res->ai_addrlen);
+
+	while (1) {
+		memset(&message_packet, 0, sizeof message_packet);
+		memset(buf, 0, 100);
+		//get a packet
+		recvfrom(sockfd, buf, sizeof buf, 0, NULL, NULL);
+		buf[100] = '\0';
+		printf("%s\n", buf);
 
 	}
-	printf("exiting forwarding loop thread\n");
+	printf("---exiting forwarding loop thread---\n");
 	return NULL;
 }
 
@@ -157,7 +188,6 @@ void *sending_loop(void *arg) {
 	while (0) {
 
 	}
-	printf("exiting send loop thread\n");
+	printf("---exiting send loop thread---\n");
 	return NULL;
-
 }
