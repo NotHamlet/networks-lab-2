@@ -78,12 +78,6 @@ int main(int argc, char *argv[])
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	// char *test_buf = MESSAGE;
-	// if ((numbytes = send(sockfd, test_buf, strlen(MESSAGE), 0)) == -1) {
-	// 	perror("send");
-	// 	exit(1);
-	// }
-
 	//First, we send a join request
 	jr_packet.gid = GID;
 	jr_packet.magic_num = htons(MAGIC_NUMBER);
@@ -104,16 +98,6 @@ int main(int argc, char *argv[])
 	printf("Magic Number: %#06x\n", ntohs(response_packet.magic_num));
 	printf("RID: %d\n", response_packet.rid);
 	printf("Next Node IP: %#10x\n", ntohl(response_packet.next_IP));
-
-
-	// if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-	//     perror("recv");
-	//     exit(1);
-	// }
-	//
-	// buf[numbytes] = '\0';
-	//
-	// printf("client: received '%s'\n",buf);
 
 	close(sockfd);
 
