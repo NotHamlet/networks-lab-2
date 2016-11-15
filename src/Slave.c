@@ -35,6 +35,11 @@ int main(int argc, char *argv[])
 	char s[INET6_ADDRSTRLEN];
 	struct join_request jr_packet;
 	struct request_response response_packet;
+	uint8_t gid;
+	uint16_t magic_num;
+	uint8_t this_rid;
+	uint32_t next_IP;
+
 
 	if (argc != 3) {
     fprintf(stderr,"usage: slave MasterHostname MasterPort#\n");
@@ -87,17 +92,21 @@ int main(int argc, char *argv[])
 	}
 
 	//Then, we wait for a response and set up our junk
-
 	if ((numbytes = recv(sockfd, (void *)(&response_packet), sizeof response_packet, 0)) == -1) {
 	    perror("recv");
 	    exit(1);
 	}
 
+	gid = response_packet.gid;
+	magic_num = ntohs(response_packet.magic_num);
+	this_rid = response_packet.rid;
+	next_IP = ntohl(response_packet.next_IP);
+
 	printf("Received Response Packet\n");
-	printf("GID: %d\n", response_packet.gid);
-	printf("Magic Number: %#06x\n", ntohs(response_packet.magic_num));
-	printf("RID: %d\n", response_packet.rid);
-	printf("Next Node IP: %#10x\n", ntohl(response_packet.next_IP));
+	printf("GID: %d\n", gid);
+	printf("Magic Number: %#06x\n", magic_num);
+	printf("RID: %d\n", this_rid);
+	printf("Next Node IP: %#10x\n", next_IP);
 
 	close(sockfd);
 
