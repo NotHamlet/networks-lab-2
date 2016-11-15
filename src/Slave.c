@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 #include <arpa/inet.h>
 
@@ -26,6 +27,10 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+void *forwarding_loop(void *);
+
+void *sending_loop(void *);
+
 int main(int argc, char *argv[])
 {
 	int sockfd, numbytes;
@@ -39,6 +44,9 @@ int main(int argc, char *argv[])
 	uint16_t magic_num;
 	uint8_t this_rid;
 	uint32_t next_IP;
+
+	pthread_t forwarding_thread_id;
+	pthread_t sending_thread_id;
 
 
 	if (argc != 3) {
@@ -113,6 +121,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	//TODO set up forwarding service
+	//TODO set up sending service
+
 	printf("Received Response Packet\n");
 	printf("GID: %d\n", gid);
 	printf("Magic Number: %#06x\n", magic_num);
@@ -121,5 +132,32 @@ int main(int argc, char *argv[])
 
 	close(sockfd);
 
+	pthread_create(&forwarding_thread_id, NULL, forwarding_loop, NULL);
+	pthread_create(&sending_thread_id, NULL, sending_loop, NULL);
+
+	pthread_join(forwarding_thread_id, NULL);
+	pthread_join(sending_thread_id, NULL);
+	printf("exiting program\n");
 	return 0;
+}
+
+void *forwarding_loop(void *arg) {
+	struct thread_args *args = (struct thread_args *)arg;
+
+	while (0) {
+
+	}
+	printf("exiting forwarding loop thread\n");
+	return NULL;
+}
+
+void *sending_loop(void *arg) {
+	struct thread_args *args = (struct thread_args *)arg;
+
+	while (0) {
+
+	}
+	printf("exiting send loop thread\n");
+	return NULL;
+
 }

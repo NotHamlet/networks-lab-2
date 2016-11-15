@@ -14,3 +14,9 @@ struct request_response {
   uint8_t rid;
   uint32_t next_IP;
 } __attribute__((__packed__));
+
+struct thread_args {
+  uint32_t next_IP;
+  uint8_t rid;
+  uint8_t gid;
+};

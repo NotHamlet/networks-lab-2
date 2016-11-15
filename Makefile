@@ -1,7 +1,7 @@
 slave:
-	cc src/Slave.c -o slave
+	cc src/Slave.c -o slave -lpthread
 master:
-	cc src/Master.c -o master
+	cc src/Master.c -o master -lpthread
 
 udisplay:
 	cc provided/UDPServerDisplay.c -o udisplay
