@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 	gid = response_packet.gid;
 	magic_num = ntohs(response_packet.magic_num);
 	this_rid = response_packet.rid;
-	next_IP = response_packet.next_IP;
+	next_IP = ntohl(response_packet.next_IP);
 
 	if (magic_num != MAGIC_NUMBER) {
 		printf("Error: Server response contained wrong \"magic number\" value.");
@@ -203,7 +203,7 @@ void *forwarding_loop(void *arg) {
 	memset(&next_addr, 0, sizeof next_addr);
 	next_addr.sin_family = AF_INET;
 	next_addr.sin_port = htons(BASE_PORT + 5*args->gid + (args->this_rid-1));
-	next_addr.sin_addr.s_addr = args->next_IP;
+	next_addr.sin_addr.s_addr = htonl(args->next_IP);
 
 	while (1) {
 		memset(&message_packet, 0, sizeof message_packet);
@@ -212,6 +212,7 @@ void *forwarding_loop(void *arg) {
 		    perror("recvfrom");
 		    exit(1);
 		}
+		printf("\nProcessing packet...\n");
 		if ((numbytes != (sizeof message_packet))) {
 			printf("\nPacket received with incorrect length.\n");
 			continue;
@@ -227,6 +228,7 @@ void *forwarding_loop(void *arg) {
 		}
 
 		if (message_packet.rid_dest == args->this_rid) {
+			//TODO deal with packet sizes or somethign
 			printf("Received message: %s\n", message_packet.message);
 		} else if (message_packet.ttl > 1) {
 			//Decrease the TTL value of the packet, and forward it to next_addr
@@ -236,6 +238,10 @@ void *forwarding_loop(void *arg) {
 				perror("error forwarding packet: sendto");
 				exit(1);
 			}
+			//TODO remove this?
+			printf("\nForwarded packet.\n");
+		} else {
+			printf("\nDiscarded packet.\n");
 		}
 
 	}
@@ -245,9 +251,58 @@ void *forwarding_loop(void *arg) {
 
 void *sending_loop(void *arg) {
 	struct thread_args *args = (struct thread_args *)arg;
+	struct sockaddr_in next_addr;
+	int sockfd;
+	size_t numbytes;
+	struct ring_message message_packet;
+	int dest_rid;
+	char *line = NULL;
 
-	while (0) {
+	//get a socket for the outgoing messages
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+		perror("send: socket");
+		exit(1);
+	}
 
+	//initialize struct for next node's address info
+	memset(&next_addr, 0, sizeof next_addr);
+	next_addr.sin_family = AF_INET;
+	next_addr.sin_port = htons(BASE_PORT + 5*args->gid + (args->this_rid-1));
+	next_addr.sin_addr.s_addr = htonl(args->next_IP);
+
+	while (1) {
+		printf("Input ring ID of destination:");
+		fflush(stdout);
+		getline(&line, &numbytes, stdin);
+		if (sscanf(line, "%d", &dest_rid) < 1) {
+			continue;
+		}
+		printf("Input message to send:");
+		fflush(stdout);
+		getline(&line, &numbytes, stdin);
+		//TODO is this the right call? Do we need to subtract one to account for the null character?
+		if (strlen(line) > MAX_MESSAGE_LENGTH) {
+			printf("Message too long.\n");
+		} else {
+			memset(&message_packet, 0, sizeof message_packet);
+		  message_packet.gid = args->gid;;
+		  message_packet.magic_num = MAGIC_NUMBER;
+		  message_packet.ttl = INITIAL_TTL;
+		  message_packet.rid_source = args->this_rid;
+		  message_packet.rid_dest = dest_rid;
+			strcpy(message_packet.message, line);
+			message_packet.checksum = compute_checksum((void*)(&message_packet), (sizeof message_packet) - 1);
+
+			if ((numbytes = sendto(sockfd, (void *)(&message_packet), sizeof message_packet, 0,
+					 (struct sockaddr *)(&next_addr), sizeof next_addr)) == -1) {
+				perror("error sending packet: sendto");
+				exit(1);
+			}
+
+			printf("message sent. %s %d\n",message_packet.message, numbytes);
+		}
+		free(line);
+		line = NULL;
 	}
 	printf("---exiting send loop thread---\n");
 	return NULL;
