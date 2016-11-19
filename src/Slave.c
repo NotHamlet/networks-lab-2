@@ -169,7 +169,8 @@ void *forwarding_loop(void *arg) {
 	char this_port_number[10];
 	struct ring_message message_packet;
 	int numbytes;
-	uint8_t checksum
+	uint8_t checksum;
+	struct sockaddr_in next_addr;
 
 	//we will need a decimal string expressing the port number
 	sprintf(this_port_number,"%d", BASE_PORT + 5*args->gid + (args->this_rid));
@@ -199,7 +200,10 @@ void *forwarding_loop(void *arg) {
 	}
 	freeaddrinfo(res);
 
-	//TODO set up addrinfo for next ring member
+	memset(&next_addr, 0, sizeof next_addr);
+	next_addr.sin_family = AF_INET;
+	next_addr.sin_port = htons(BASE_PORT + 5*args->gid + (args->this_rid-1));
+	next_addr.sin_addr.s_addr = args->next_IP;
 
 	while (1) {
 		memset(&message_packet, 0, sizeof message_packet);
@@ -212,8 +216,8 @@ void *forwarding_loop(void *arg) {
 			printf("\nPacket received with incorrect length.\n");
 			continue;
 		}
-		if (message_packet.magic_num == MAGIC_NUMBER) {
-			printf("\nPacket received with incorrect \"magic number\" value.");
+		if (message_packet.magic_num != MAGIC_NUMBER) {
+			printf("\nPacket received with incorrect \"magic number\" value.\n");
 			continue;
 		}
 		checksum = compute_checksum((void *)(&message_packet), (sizeof message_packet)-1);
@@ -221,15 +225,17 @@ void *forwarding_loop(void *arg) {
 			printf("\nPacket received with incorrect checksum. Needed %#x, found %#x.\n", checksum, message_packet.checksum);
 			continue;
 		}
-		
+
 		if (message_packet.rid_dest == args->this_rid) {
-			//TODO ask Biaz how to print out received packets. Will these packets be null-terminated?
 			printf("Received message: %s\n", message_packet.message);
 		} else if (message_packet.ttl > 1) {
-			//TODO make sure that this is the correct TTL value
+			//Decrease the TTL value of the packet, and forward it to next_addr
 			message_packet.ttl--;
-			//TODO forward packet to next ring member
-
+			if ((numbytes = sendto(sockfd, (void *)(&message_packet), sizeof message_packet, 0,
+					 (struct sockaddr *)(&next_addr), sizeof next_addr)) == -1) {
+				perror("error forwarding packet: sendto");
+				exit(1);
+			}
 		}
 
 	}
