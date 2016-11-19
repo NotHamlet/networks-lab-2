@@ -28,8 +28,8 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 void *forwarding_loop(void *);
-
 void *sending_loop(void *);
+
 
 int main(int argc, char *argv[])
 {
@@ -147,35 +147,65 @@ int main(int argc, char *argv[])
 }
 
 void *forwarding_loop(void *arg) {
+	int rv;
 	struct thread_args *args = (struct thread_args *)arg;
-	struct addrinfo hints, *res;
+	struct addrinfo hints, *res, *p;
 	int sockfd;
-	char port_number[10];
+	char this_port_number[10];
 	struct ring_message message_packet;
-	int byteCount;
-
-	//TODO remove this
-	char buf[100];
+	int numbytes;
 
 	//we will need a decimal string expressing the port number
-	sprintf(port_number,"%d", BASE_PORT + 5*args->gid + (args->this_rid));
-	printf("%s\n", port_number);
-
+	sprintf(this_port_number,"%d", BASE_PORT + 5*args->gid + (args->this_rid));
+	printf("%s\n", this_port_number);
 	//set up a socket
 	hints.ai_family = AF_INET;  // use IPv4 or IPv6, whichever
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
-	getaddrinfo(NULL, port_number, &hints, &res);
-	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-	bind(sockfd, res->ai_addr, res->ai_addrlen);
+
+	if ((rv = getaddrinfo(NULL, this_port_number, &hints, &res)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		exit(1);
+	}
+	// loop through all the results and bind to the first we can
+	for(p = res; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol)) == -1) {
+			perror("listener: socket");
+			continue;
+		}
+		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sockfd);
+			perror("listener: bind");
+			continue;
+		}
+		break;
+	}
+	freeaddrinfo(servinfo);
+
+	//TODO set up addrinfo for next ring member
 
 	while (1) {
 		memset(&message_packet, 0, sizeof message_packet);
-		memset(buf, 0, 100);
-		//get a packet
-		recvfrom(sockfd, buf, sizeof buf, 0, NULL, NULL);
-		buf[100] = '\0';
-		printf("%s\n", buf);
+		//get a packet (blocking)
+		if ((numbytes = recvfrom(sockfd, (void *)(&message_packet), sizeof message_packet, 0, NULL, NULL)) == -1) {
+		    perror("recvfrom");
+		    exit(1);
+		}
+		if ((numbytes != (sizeof message_packet))) {
+			printf("\nPacket received with incorrect length.\n");
+		}
+		//TODO compute the checksum of the data
+		// Check numbytes, magic_num, and checksum against packet values
+		if (message_packet.rid_dest == args->this_rid) {
+			//TODO ask Biaz how to print out received packets. Will these packets be null-terminated?
+			printf("Received message: %s\n", message_packet.message);
+		} else if (message_packet.ttl > 1) {
+			//TODO make sure that this is the correct TTL value
+			message_packet.ttl--;
+			//TODO forward packet to next ring member
+
+		}
 
 	}
 	printf("---exiting forwarding loop thread---\n");

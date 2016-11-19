@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
   struct join_request jr_packet;
   struct request_response response_packet;
 	uint8_t rid = 1;
-	uint32_t next_IP = 0x12345678;
+	uint32_t next_IP = 0x83cc0e38;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
@@ -142,6 +142,9 @@ int main(int argc, char *argv[])
 		response_packet.magic_num = htons(MAGIC_NUMBER);
 		response_packet.rid = rid;
 		response_packet.next_IP = htonl(next_IP);
+
+		next_IP = ntohl(((struct in_addr*)get_in_addr((struct sockaddr *)&their_addr))->s_addr);
+		printf("%#010x\n", next_IP);
 
     if (send(new_fd, (void *)(&response_packet), sizeof response_packet, 0) == -1) {
       perror("send");
