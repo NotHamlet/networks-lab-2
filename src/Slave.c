@@ -30,6 +30,21 @@ void *get_in_addr(struct sockaddr *sa)
 void *forwarding_loop(void *);
 void *sending_loop(void *);
 
+uint8_t compute_checksum(void *buf, size_t length) {
+	uint8_t carry;
+	uint16_t total = 0;
+	uint8_t *cBuf = (uint8_t *)buf;
+	int i;
+	for (i = 0; i < length; i++) {
+		total += (uint8_t)(cBuf[i]);
+		carry = (uint8_t)(total / 0x100);
+		// printf("%4x ",total);
+		total = total & 0xFF;
+		total += carry;
+		// printf("%4x\n",total);
+	}
+	return ~((uint8_t)total);
+}
 
 int main(int argc, char *argv[])
 {
@@ -114,7 +129,7 @@ int main(int argc, char *argv[])
 	gid = response_packet.gid;
 	magic_num = ntohs(response_packet.magic_num);
 	this_rid = response_packet.rid;
-	next_IP = ntohl(response_packet.next_IP);
+	next_IP = response_packet.next_IP;
 
 	if (magic_num != MAGIC_NUMBER) {
 		printf("Error: Server response contained wrong \"magic number\" value.");
@@ -154,6 +169,7 @@ void *forwarding_loop(void *arg) {
 	char this_port_number[10];
 	struct ring_message message_packet;
 	int numbytes;
+	uint8_t checksum
 
 	//we will need a decimal string expressing the port number
 	sprintf(this_port_number,"%d", BASE_PORT + 5*args->gid + (args->this_rid));
@@ -181,7 +197,7 @@ void *forwarding_loop(void *arg) {
 		}
 		break;
 	}
-	freeaddrinfo(servinfo);
+	freeaddrinfo(res);
 
 	//TODO set up addrinfo for next ring member
 
@@ -194,9 +210,18 @@ void *forwarding_loop(void *arg) {
 		}
 		if ((numbytes != (sizeof message_packet))) {
 			printf("\nPacket received with incorrect length.\n");
+			continue;
 		}
-		//TODO compute the checksum of the data
-		// Check numbytes, magic_num, and checksum against packet values
+		if (message_packet.magic_num == MAGIC_NUMBER) {
+			printf("\nPacket received with incorrect \"magic number\" value.");
+			continue;
+		}
+		checksum = compute_checksum((void *)(&message_packet), (sizeof message_packet)-1);
+		if ( checksum != message_packet.checksum) {
+			printf("\nPacket received with incorrect checksum. Needed %#x, found %#x.\n", checksum, message_packet.checksum);
+			continue;
+		}
+		
 		if (message_packet.rid_dest == args->this_rid) {
 			//TODO ask Biaz how to print out received packets. Will these packets be null-terminated?
 			printf("Received message: %s\n", message_packet.message);

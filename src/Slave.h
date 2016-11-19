@@ -1,6 +1,7 @@
 #define BASE_PORT 10010
 #define GID 11
 #define MAGIC_NUMBER 0x1234
+#define INITIAL_TTL 5
 
 #define MAX_MESSAGE_LENGTH 64
 
