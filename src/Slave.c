@@ -230,6 +230,9 @@ void *forwarding_loop(void *arg) {
 		} else if (message_packet.ttl > 1) {
 			//Decrease the TTL value of the packet, and forward it to next_addr
 			message_packet.ttl--;
+			((uint8_t *)(&message_packet))[numbytes-1] = 0;
+			((uint8_t *)(&message_packet))[numbytes-1] = compute_checksum((void*)(&message_packet), (sizeof message_packet) - 1);
+
 			if ((numbytes = sendto(sockfd, (void *)(&message_packet), sizeof message_packet, 0,
 					 (struct sockaddr *)(&next_addr), sizeof next_addr)) == -1) {
 				perror("error forwarding packet: sendto");
