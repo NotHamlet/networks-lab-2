@@ -212,8 +212,8 @@ void *forwarding_loop(void *arg) {
 		    perror("recvfrom");
 		    exit(1);
 		}
-		printf("\nProcessing packet...\n");
-		if (message_packet.magic_num != MAGIC_NUMBER) {
+		// printf("\nProcessing packet...\n");
+		if (ntohs(message_packet.magic_num) != MAGIC_NUMBER) {
 			printf("\nPacket received with incorrect \"magic number\" value.\n");
 			continue;
 		}
@@ -226,7 +226,7 @@ void *forwarding_loop(void *arg) {
 			//TODO deal with packet sizes or somethign
 			//set checksum to 0 so that print statement doesn't get pissed or whatever?
 			((uint8_t *)(&message_packet))[numbytes-1] = '\0';
-			printf("Received message: %s\n", message_packet.message);
+			printf("\nReceived message: %s\n", message_packet.message);
 		} else if (message_packet.ttl > 1) {
 			//Decrease the TTL value of the packet, and forward it to next_addr
 			message_packet.ttl--;
@@ -235,10 +235,9 @@ void *forwarding_loop(void *arg) {
 				perror("error forwarding packet: sendto");
 				exit(1);
 			}
-			//TODO remove this?
-			printf("\nForwarded packet.\n");
+			// printf("\nForwarded packet.\n");
 		} else {
-			printf("\nDiscarded packet.\n");
+			// printf("\nDiscarded packet.\n");
 		}
 
 	}
@@ -291,7 +290,7 @@ void *sending_loop(void *arg) {
 		} else {
 			memset(&message_packet, 0, sizeof message_packet);
 		  message_packet.gid = args->gid;;
-		  message_packet.magic_num = MAGIC_NUMBER;
+		  message_packet.magic_num = htons(MAGIC_NUMBER);
 		  message_packet.ttl = INITIAL_TTL;
 		  message_packet.rid_source = args->this_rid;
 		  message_packet.rid_dest = dest_rid;
