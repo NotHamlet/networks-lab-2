@@ -168,7 +168,7 @@ void *forwarding_loop(void *arg) {
 	int sockfd;
 	char this_port_number[10];
 	struct ring_message message_packet;
-	size_t numbytes;
+	size_t numbytes, numbytes_old;
 	struct sockaddr_in next_addr;
 
 	//we will need a decimal string expressing the port number
@@ -232,8 +232,8 @@ void *forwarding_loop(void *arg) {
 			message_packet.ttl--;
 			((uint8_t *)(&message_packet))[numbytes-1] = 0;
 			((uint8_t *)(&message_packet))[numbytes-1] = compute_checksum((void*)(&message_packet), (sizeof message_packet) - 1);
-
-			if ((numbytes = sendto(sockfd, (void *)(&message_packet), sizeof message_packet, 0,
+			numbytes_old = numbytes;
+			if ((numbytes = sendto(sockfd, (void *)(&message_packet), numbytes_old, 0,
 					 (struct sockaddr *)(&next_addr), sizeof next_addr)) == -1) {
 				perror("error forwarding packet: sendto");
 				exit(1);
