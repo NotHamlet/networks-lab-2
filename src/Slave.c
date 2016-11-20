@@ -168,14 +168,14 @@ void *forwarding_loop(void *arg) {
 	int sockfd;
 	char this_port_number[10];
 	struct ring_message message_packet;
-	int numbytes;
-	uint8_t checksum;
+	size_t numbytes;
 	struct sockaddr_in next_addr;
 
 	//we will need a decimal string expressing the port number
 	sprintf(this_port_number,"%d", BASE_PORT + 5*args->gid + (args->this_rid));
 	printf("%s\n", this_port_number);
 	//set up a socket
+	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;  // use IPv4 or IPv6, whichever
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_PASSIVE;
@@ -213,22 +213,19 @@ void *forwarding_loop(void *arg) {
 		    exit(1);
 		}
 		printf("\nProcessing packet...\n");
-		if ((numbytes != (sizeof message_packet))) {
-			printf("\nPacket received with incorrect length.\n");
-			continue;
-		}
 		if (message_packet.magic_num != MAGIC_NUMBER) {
 			printf("\nPacket received with incorrect \"magic number\" value.\n");
 			continue;
 		}
-		checksum = compute_checksum((void *)(&message_packet), (sizeof message_packet)-1);
-		if ( checksum != message_packet.checksum) {
-			printf("\nPacket received with incorrect checksum. Needed %#x, found %#x.\n", checksum, message_packet.checksum);
+		if ( compute_checksum((void*)(&message_packet), numbytes) != 0) {
+			printf("\nPacket received with incorrect checksum.\n");
 			continue;
 		}
 
 		if (message_packet.rid_dest == args->this_rid) {
 			//TODO deal with packet sizes or somethign
+			//set checksum to 0 so that print statement doesn't get pissed or whatever?
+			((uint8_t *)(&message_packet))[numbytes-1] = '\0';
 			printf("Received message: %s\n", message_packet.message);
 		} else if (message_packet.ttl > 1) {
 			//Decrease the TTL value of the packet, and forward it to next_addr
@@ -257,6 +254,7 @@ void *sending_loop(void *arg) {
 	struct ring_message message_packet;
 	int dest_rid;
 	char *line = NULL;
+	size_t message_len;
 
 	//get a socket for the outgoing messages
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
@@ -279,10 +277,17 @@ void *sending_loop(void *arg) {
 		}
 		printf("Input message to send:");
 		fflush(stdout);
-		getline(&line, &numbytes, stdin);
-		//TODO is this the right call? Do we need to subtract one to account for the null character?
-		if (strlen(line) > MAX_MESSAGE_LENGTH) {
+		message_len=getline(&line, &numbytes, stdin);
+		if ((line)[message_len - 1] == '\n') {
+	    (line)[message_len - 1] = '\0';
+		}
+		message_len--;
+
+		//TODO make sure this was right. Currently subtracting 1 to make room for a null terminator.
+		if (message_len > MAX_MESSAGE_LENGTH-1) {
 			printf("Message too long.\n");
+		} else if (message_len <1) {
+			printf("Message too short.\n");
 		} else {
 			memset(&message_packet, 0, sizeof message_packet);
 		  message_packet.gid = args->gid;;
@@ -291,9 +296,9 @@ void *sending_loop(void *arg) {
 		  message_packet.rid_source = args->this_rid;
 		  message_packet.rid_dest = dest_rid;
 			strcpy(message_packet.message, line);
-			message_packet.checksum = compute_checksum((void*)(&message_packet), (sizeof message_packet) - 1);
+			message_packet.message[message_len+1] = compute_checksum((void*)(&message_packet), (sizeof message_packet) - 1);
 
-			if ((numbytes = sendto(sockfd, (void *)(&message_packet), sizeof message_packet, 0,
+			if ((numbytes = sendto(sockfd, (void *)(&message_packet), (sizeof message_packet) - (MAX_MESSAGE_LENGTH-1-message_len), 0,
 					 (struct sockaddr *)(&next_addr), sizeof next_addr)) == -1) {
 				perror("error sending packet: sendto");
 				exit(1);

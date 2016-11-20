@@ -30,6 +30,6 @@ struct ring_message {
   uint8_t ttl;
   uint8_t rid_source;
   uint8_t rid_dest;
-  char message[MAX_MESSAGE_LENGTH];
-  uint8_t checksum;
+  char message[MAX_MESSAGE_LENGTH+1];
+  // uint8_t checksum; // the last byte of message will be treated as checksum
 } __attribute__((__packed__));
